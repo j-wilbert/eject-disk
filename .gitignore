@@ -1,0 +1,11 @@
+# Rust build artifacts
+/target/
+
+# macOS system files
+.DS_Store
+.AppleDouble
+.LSOverride
+Icon\r\r
+._*
+.Spotlight-V100
+.Trashes
