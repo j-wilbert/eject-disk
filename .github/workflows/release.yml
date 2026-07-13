@@ -1,0 +1,72 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    name: Release Binaries
+    runs-on: macos-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: x86_64-apple-darwin, aarch64-apple-darwin
+
+      - name: Rust Cache
+        uses: Swatinem/rust-cache@v2
+
+      - name: Build Intel Binary
+        run: cargo build --release --target x86_64-apple-darwin
+
+      - name: Build Apple Silicon Binary
+        run: cargo build --release --target aarch64-apple-darwin
+
+      - name: Package Binaries
+        run: |
+          mkdir -p dist
+          
+          # Package Intel
+          mkdir -p dist/intel
+          cp target/x86_64-apple-darwin/release/eject-disk dist/intel/eject-disk
+          cp LICENSE README.md dist/intel/
+          cd dist/intel
+          tar -czf ../../eject-disk-x86_64-apple-darwin.tar.gz eject-disk LICENSE README.md
+          cd ../..
+          
+          # Package Apple Silicon
+          mkdir -p dist/arm
+          cp target/aarch64-apple-darwin/release/eject-disk dist/arm/eject-disk
+          cp LICENSE README.md dist/arm/
+          cd dist/arm
+          tar -czf ../../eject-disk-aarch64-apple-darwin.tar.gz eject-disk LICENSE README.md
+          cd ../..
+          
+          # Package Universal
+          mkdir -p dist/universal
+          lipo -create \
+            -output dist/universal/eject-disk \
+            target/x86_64-apple-darwin/release/eject-disk \
+            target/aarch64-apple-darwin/release/eject-disk
+          cp LICENSE README.md dist/universal/
+          cd dist/universal
+          tar -czf ../../eject-disk-universal.tar.gz eject-disk LICENSE README.md
+          cd ../..
+
+      - name: Create Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            eject-disk-*.tar.gz
+          generate_release_notes: true
+          draft: false
+          prerelease: false
